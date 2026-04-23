@@ -69,3 +69,5 @@ __pycache__/
 #OS files
 .DS_Store
 /docs/_build/doctrees/environment.pickle
+
+ideal/imaging_systems/lensless_imager/wandb/

@@ -23,7 +23,7 @@ import os
 import sys
 # set gpu to be pci bus id
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 # set gpu memory usage and turnoff pre-allocated memory
 # TODO use the MI version for this, the helper function
 os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] ='false'
@@ -64,6 +64,46 @@ from lensless_imaging_system import RMLPSFLayer
 from lensless_data_generator import LenslessDataGenerator
 
 
+# %%
+H, W = 65, 65
+# rows, cols = 5, 5            # number of sensors vertically and horizontally
+# sensor_h, sensor_w = 7, 9    # each sensor block size
+# spacing_y, spacing_x = 6, 4  # more vertical spacing between rows
+
+rows, cols = 3, 3            # number of sensors vertically and horizontally
+sensor_h, sensor_w = 7, 9    # each sensor block size
+spacing_y, spacing_x = 12, 10 # more vertical spacing between rows
+
+# Compute total pattern size
+pattern_h = rows * sensor_h + (rows - 1) * spacing_y
+pattern_w = cols * sensor_w + (cols - 1) * spacing_x
+
+# Center the pattern in the full image
+y_start = (H - pattern_h) // 2
+x_start = (W - pattern_w) // 2
+
+# Initialize mask
+sensor_mask = np.zeros((H, W), dtype=np.float32) 
+
+# Fill rectangular sensor regions
+for r in range(rows):
+    for c in range(cols):
+        y0 = y_start + r * (sensor_h + spacing_y)
+        y1 = y0 + sensor_h
+        x0 = x_start + c * (sensor_w + spacing_x)
+        x1 = x0 + sensor_w
+        sensor_mask[y0:y1, x0:x1] = 1.0  # active region
+
+sensor_array = jnp.array(sensor_mask)
+# Visualize
+plt.figure(figsize=(4,4))
+plt.imshow(sensor_mask, cmap='gray', vmin=0, vmax=1)
+plt.title("sensor grid")
+plt.axis('off')
+plt.show()
+
+
+
 # %% [markdown]
 # ## Define a Lensless Imaging System
 
@@ -95,6 +135,7 @@ class LenslessImagingSystem(ImagingSystem):
         """
         key = self.next_rng_key()
         x = self.psf_layer(objects, key=key) 
+        x = x * sensor_array
         # clip the output to be non-negative 
         x = jnp.where(x < 1e-8, 1e-8, x) 
         return x
@@ -221,7 +262,7 @@ patching_strategy = 'random'
 num_steps = 2000 
 loss_type = 'pixelcnn' # TODO change as needed
 # these are pixelcnn loss-specific parameters
-refit_every = 50 # normally it's every 50 
+refit_every = 20 # normally it's every 50 
 refit_patience = 5 # default is 5
 refit_learning_rate = 1e-3 # default is 4e-3 
 refit_steps_per_epoch = 100 # default is 100 
@@ -230,7 +271,7 @@ gaussian_sigma = None # if none, Poisson noise is used. Otherwise Gaussian noise
 # wandb parameters
 use_wandb=True
 project_name='ideal_development_debug'
-run_name='{}_loss_patch_16_reinitializing_refit_{}_patience_{}_lr_{}_steps_per_epoch_{}_init_{}'.format(loss_type, refit_every, refit_patience, refit_learning_rate, refit_steps_per_epoch, num_gaussian) # TODO change with each experiment
+run_name='sensor_array_reint_pixel_cnn_FALSE_{}_loss_patch_16_reinitializing_refit_{}_patience_{}_lr_{}_steps_per_epoch_{}_init_{}'.format(loss_type, refit_every, refit_patience, refit_learning_rate, refit_steps_per_epoch, num_gaussian) # TODO change with each experiment
 log_every = 20
 validate_every = 500
 
@@ -358,8 +399,8 @@ test_dataset = data_generator.create_dataset(
 
 # %%
 if loss_type == 'pixelcnn':
-    # loss_fn = PixelCNNLoss(refit_every=refit_every, refit_patience=refit_patience, refit_learning_rate=refit_learning_rate, refit_steps_per_epoch=refit_steps_per_epoch)
-    loss_fn = PixelCNNLoss(refit_every=20)
+    loss_fn = PixelCNNLoss(refit_every=refit_every, refit_patience=refit_patience, refit_learning_rate=refit_learning_rate, refit_steps_per_epoch=refit_steps_per_epoch, reinitialize_pixelcnn=False)
+    # loss_fn = PixelCNNLoss(refit_every=20)
 elif loss_type == 'gaussian_entropy':
     loss_fn = GaussianEntropyLoss()
 elif loss_type == 'gaussian':

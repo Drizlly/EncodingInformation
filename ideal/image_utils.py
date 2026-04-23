@@ -122,8 +122,44 @@ def _extract_masked_patches(data, key, num_patches, patch_size, num_masked_pixel
     
     return patches
 
+def _extract_sensor_masked_patches(data, key, num_patches, patch_size, sensor_mask):
+    """Extract patches only from active sensor regions defined by sensor_mask."""
+    half = patch_size // 2
+    H, W = sensor_mask.shape
+    
+    # Find all valid patch center coordinates (where sensor is active,
+    # and patch stays within image bounds)
+    ys, xs = jnp.where(
+        (sensor_mask > 0) &
+        (jnp.arange(H)[:, None] >= half) &
+        (jnp.arange(H)[:, None] < H - half) &
+        (jnp.arange(W)[None, :] >= half) &
+        (jnp.arange(W)[None, :] < W - half)
+    )
+
+    print("ys, xs:", ys, xs)
+    
+    # Randomly sample from valid centers
+    num_valid = ys.shape[0]
+    indices = jax.random.randint(key, shape=(num_patches,), minval=0, maxval=num_valid)
+    center_ys = ys[indices]
+    center_xs = xs[indices]
+    
+    # Extract patches around each center
+    def extract_one(cy, cx):
+        return jax.lax.dynamic_slice(data[0], (cy - half, cx - half), (patch_size, patch_size))
+    
+    # Extract across batch
+    patches = jax.vmap(lambda cy, cx: jax.vmap(
+        lambda img: jax.lax.dynamic_slice(img, (cy - half, cx - half), (patch_size, patch_size))
+    )(data))(center_ys, center_xs)
+    
+    # patches shape: (num_patches, batch, patch_size, patch_size)
+    # reshape to (num_patches * batch, patch_size, patch_size)
+    return patches.reshape(-1, patch_size, patch_size)
+
 def extract_patches(data, key, num_patches=1000, patch_size=16, strategy='random', 
-                   crop_location=None, num_masked_pixels=256, verbose=False) -> jnp.ndarray:
+                   crop_location=None, num_masked_pixels=256, verbose=False, sensor_mask = None) -> jnp.ndarray:
     """Extract patches from a dataset using various strategies, optimized for JAX."""
     strategies = {
         'random': lambda: _extract_random_patches(data, key, num_patches, patch_size),
@@ -137,7 +173,8 @@ def extract_patches(data, key, num_patches=1000, patch_size=16, strategy='random
         ),
         'tiled': lambda: _extract_tiled_patches(data, key, num_patches, patch_size),
         'cropped': lambda: _extract_cropped_patches(data, key, num_patches, patch_size, crop_location),
-        'masked': lambda: _extract_masked_patches(data, key, num_patches, patch_size, num_masked_pixels)
+        'masked': lambda: _extract_masked_patches(data, key, num_patches, patch_size, num_masked_pixels),
+        'sensor_masked': lambda: _extract_sensor_masked_patches(data, key, num_patches, patch_size, sensor_mask)
     }
     
     return strategies[strategy]()
