@@ -10,7 +10,7 @@ from image_utils import (
 # from models import IDEALFullGaussianProcess
 from encoding_information.models.pixel_cnn import PixelCNN
 from encoding_information.models.multichannel_pixel_cnn import MultiChannelPixelCNN
-from ideal.models import FullGaussianProcess  # Add this import at the top of the file
+# from ideal.models import FullGaussianProcess  # Add this import at the top of the file
 
 class BaseLoss:
     """Base class for IDEAL loss functions."""

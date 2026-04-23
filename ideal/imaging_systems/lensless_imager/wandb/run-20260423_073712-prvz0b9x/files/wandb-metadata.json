@@ -1,0 +1,28 @@
+{
+  "os": "Linux-5.4.0-211-generic-x86_64-with-glibc2.31",
+  "python": "CPython 3.11.14",
+  "startedAt": "2026-04-23T07:37:12.881809Z",
+  "program": "/home/juliama/wallerlab/EncodingInformation/ideal/imaging_systems/lensless_imager/2025_02_20_ideal_example_lenslets_CLEAN.py",
+  "codePath": "ideal/imaging_systems/lensless_imager/2025_02_20_ideal_example_lenslets_CLEAN.py",
+  "codePathLocal": "2025_02_20_ideal_example_lenslets_CLEAN.py",
+  "git": {
+    "remote": "git@github.com:Drizlly/EncodingInformation.git",
+    "commit": "15b168b7dd116cf307a0842c06c7addb0e0b7d57"
+  },
+  "email": "mathewjulia06@gmail.com",
+  "root": "/home/juliama/wallerlab/EncodingInformation/ideal/imaging_systems/lensless_imager",
+  "host": "honeydew",
+  "executable": "/home/juliama/miniconda3/envs/waller_env/bin/python",
+  "cpu_count": 32,
+  "cpu_count_logical": 64,
+  "disk": {
+    "/": {
+      "total": "105089261568",
+      "used": "76626829312"
+    }
+  },
+  "memory": {
+    "total": "540669358080"
+  },
+  "writerId": "o8995ipecp67p7qvxco5ytgx8s9grppq"
+}
